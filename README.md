@@ -2,9 +2,8 @@
 
 Official Go SDK for [Storlaunch](https://storlaunch.com).
 
-Mirrors the Node and Python SDKs route-for-route: 47-route surface,
-HMAC partner-billing auth, per-merchant scoping, idempotency keys, and
-webhook signature verification.
+Mirrors the Node and Python SDKs route-for-route: API-key auth,
+idempotency keys, and webhook signature verification.
 
 ## Install
 
@@ -19,8 +18,7 @@ Requires Go 1.22+. Zero dependencies beyond the standard library.
 Env vars (or pass them to `NewClient`):
 
 ```bash
-STORLAUNCH_KEY_ID=AKIASTOR...
-STORLAUNCH_SECRET=...
+STORLAUNCH_API_KEY=sk_live_...               # or sk_test_...; Settings → API keys
 STORLAUNCH_BASE_URL=https://storlaunch.com   # optional; this is the default
 ```
 
@@ -48,30 +46,31 @@ func main() {
 }
 ```
 
-## Partner scoping
+## Auth
 
-If your key carries the `storlaunch:platform:admin` scope you can act
-on behalf of any merchant in the platform:
+Every request carries the key as a bearer token, and nothing else
+authenticates:
 
-```go
-merchant := c.ForMerchant("acc_xyz")
-order, _ := merchant.ManualOrders.Create(ctx, storlaunch.Object{
-    "currency": "IDR",
-    "items":    []any{ /* ... */ },
-})
+```
+Authorization: Bearer sk_live_…
 ```
 
-`ForMerchant` returns a clone of the client with
-`X-Storlaunch-On-Behalf-Of: acc_xyz` added to every request. The
-underlying HTTP client and connection pool are shared.
+A key belongs to one workspace and acts as its owner. It cannot create or
+revoke API keys (`Account.APIKeys.Create/Revoke` answer 403 to a key; that
+needs a signed-in session), and it cannot call the shopper routes under
+`/api/v1/checkout`, which take the shopper's own storefront session.
+
+Until 0.2.0 this SDK signed requests (`KeyID` + `Secret`,
+`Storlaunch-HMAC-SHA256`) and scoped them with `ForMerchant` /
+`X-Storlaunch-On-Behalf-Of`. The API never accepted either, so they are gone.
 
 ## Idempotency
 
 Create-style mutations on the Payment, Storefront, Account, Manual
 Orders, Shipping, Inventory, Ledger, Payouts and Discount Codes
-namespaces auto-generate an `Idempotency-Key` header (`idem_<uuid>`).
-The key is included in the HMAC string-to-sign so the server can dedupe
-retries safely.
+namespaces auto-generate an idempotency key (`idem_<uuid>`), sent as both
+`X-Idempotency-Key` (what Storlaunch's replay guard reads) and
+`Idempotency-Key` (what it forwards to Plugipay), so retries are safe.
 
 To pass your own key, use the lower-level `Request` helper:
 
@@ -130,13 +129,13 @@ malformed response).
 
 | Namespace | Notes |
 |---|---|
-| `Payment.{CheckoutSessions, Plans, Subscriptions, Invoices, Receipts, Customers, PlugipaySettings, PortalSessions, WebhookEndpoints, WebhookEvents}` | Plugipay-backed payments. |
+| `Payment.{CheckoutSessions, Plans, Subscriptions, Invoices, Receipts, Customers, PortalSessions, WebhookEndpoints, WebhookEvents}` | Plugipay-backed payments. |
 | `Storefront.{Products, Licenses, Deliveries, Public}` | Digital-product storefront. |
 | `Account.{Pixels, AbandonedCart, Feeds, Blog, Referrals, APIKeys, AuditLog, Domains}` + `Profile/UpdateProfile` | Settings + marketing. |
-| `Analytics` | `Overview`, `Storefront`, `Funnel`. |
+| `Analytics` | `Overview`. |
 | `Billing` | Saas-side billing (plans, usage, invoices, checkout). |
 | `Modules` | Enable/disable optional modules. |
-| `ManualOrders`, `Onboarding`, `Shipping`, `Inventory`, `Ledger`, `Reports`, `Payouts`, `DiscountCodes`, `InboundWebhooks`, `Buyer` | Top-level resources. |
+| `ManualOrders`, `Onboarding`, `Shipping`, `Inventory`, `Ledger`, `Reports`, `Payouts`, `DiscountCodes` | Top-level resources. |
 
 For routes the SDK doesn't expose yet, use `Client.Passthrough`.
 

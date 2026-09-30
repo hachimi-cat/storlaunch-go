@@ -15,11 +15,6 @@ import (
 	"time"
 )
 
-// fixedClock returns a deterministic clock for HMAC tests.
-func fixedClock(unix int64) func() time.Time {
-	return func() time.Time { return time.Unix(unix, 0) }
-}
-
 // envelope wraps `data` in the API envelope shape callers will see.
 func envelope(t *testing.T, data any) []byte {
 	t.Helper()
@@ -47,11 +42,9 @@ func newTestClient(t *testing.T, handler http.HandlerFunc, opts ...func(*ClientO
 
 	rrt := &recordingRoundTripper{base: http.DefaultTransport}
 	co := ClientOptions{
-		KeyID:   "AKIASTOR_TEST",
-		Secret:  "sk_test_secret",
+		APIKey:  "sk_test_go",
 		BaseURL: srv.URL,
 		HTTP:    &http.Client{Timeout: 5 * time.Second, Transport: rrt},
-		Clock:   fixedClock(1_750_000_000),
 	}
 	for _, fn := range opts {
 		fn(&co)
@@ -97,27 +90,26 @@ func (r *recordingRoundTripper) last() capturedRequest {
 
 // ─── Construction ────────────────────────────────────────────────────────
 
-func TestNewClient_RequiresKeyIDAndSecret(t *testing.T) {
-	if _, err := NewClient(ClientOptions{KeyID: "", Secret: "x"}); err == nil {
-		t.Fatal("expected error for missing KeyID")
-	}
-	if _, err := NewClient(ClientOptions{KeyID: "x", Secret: ""}); err == nil {
-		t.Fatal("expected error for missing Secret")
+func TestNewClient_RequiresAPIKey(t *testing.T) {
+	t.Setenv("STORLAUNCH_API_KEY", "")
+	if _, err := NewClient(ClientOptions{}); err == nil {
+		t.Fatal("expected error for missing APIKey")
 	}
 }
 
 func TestNewClient_DefaultsBaseURL(t *testing.T) {
-	c, err := NewClient(ClientOptions{KeyID: "ak", Secret: "sk"})
+	t.Setenv("STORLAUNCH_BASE_URL", "")
+	c, err := NewClient(ClientOptions{APIKey: "sk_test_x"})
 	if err != nil {
 		t.Fatalf("NewClient: %v", err)
 	}
 	if c.BaseURL() != DefaultBaseURL {
-		t.Fatalf("expected default base url %q, got %q", DefaultBaseURL, c.BaseURL())
+		t.Fatalf("expected default base URL, got %q", c.BaseURL())
 	}
 }
 
 func TestNewClient_TrimsTrailingSlash(t *testing.T) {
-	c, err := NewClient(ClientOptions{KeyID: "ak", Secret: "sk", BaseURL: "https://x.test/////"})
+	c, err := NewClient(ClientOptions{APIKey: "sk_test_x", BaseURL: "https://x.test/////"})
 	if err != nil {
 		t.Fatalf("NewClient: %v", err)
 	}
@@ -127,97 +119,14 @@ func TestNewClient_TrimsTrailingSlash(t *testing.T) {
 }
 
 func TestNewClient_EnvFallback(t *testing.T) {
-	t.Setenv("STORLAUNCH_KEY_ID", "ak_env")
-	t.Setenv("STORLAUNCH_SECRET", "sk_env")
+	t.Setenv("STORLAUNCH_API_KEY", "sk_live_env")
 	t.Setenv("STORLAUNCH_BASE_URL", "https://from-env.test")
 	c, err := NewClient(ClientOptions{})
 	if err != nil {
 		t.Fatalf("NewClient: %v", err)
 	}
-	if c.keyID != "ak_env" || c.secret != "sk_env" || c.BaseURL() != "https://from-env.test" {
+	if c.apiKey != "sk_live_env" || c.BaseURL() != "https://from-env.test" {
 		t.Fatalf("env fallback failed: %+v", c)
-	}
-}
-
-// ─── ForMerchant cloning ─────────────────────────────────────────────────
-
-func TestForMerchant_ClonesAndPinsAccount(t *testing.T) {
-	c, err := NewClient(ClientOptions{KeyID: "ak", Secret: "sk", BaseURL: "https://x.test"})
-	if err != nil {
-		t.Fatalf("NewClient: %v", err)
-	}
-	clone := c.ForMerchant("acc_123")
-
-	if clone == c {
-		t.Fatal("ForMerchant returned the same pointer; expected a clone")
-	}
-	if clone.OnBehalfOf() != "acc_123" {
-		t.Fatalf("clone obo = %q, want acc_123", clone.OnBehalfOf())
-	}
-	if c.OnBehalfOf() != "" {
-		t.Fatalf("original client should not have been mutated, got obo=%q", c.OnBehalfOf())
-	}
-	if clone.http != c.http {
-		t.Fatal("underlying http.Client should be shared between original and clone")
-	}
-	if clone.Payment == c.Payment {
-		t.Fatal("resource namespaces should be re-installed on the clone")
-	}
-}
-
-// ─── HMAC signing ────────────────────────────────────────────────────────
-
-func TestSign_FormatMatchesNodeAndPython(t *testing.T) {
-	c, _ := NewClient(ClientOptions{
-		KeyID: "ak", Secret: "sk", BaseURL: "https://x.test", Clock: fixedClock(1_750_000_000),
-	})
-
-	sig, ts := c.sign("GET", "/api/v1/x", nil, "")
-	if ts != "1750000000" {
-		t.Fatalf("ts = %q, want 1750000000", ts)
-	}
-
-	// Recompute by hand: GET\n/api/v1/x\n1750000000\nsha256("")
-	emptyHash := sha256.Sum256(nil)
-	expected := hmacHex(t, "sk",
-		"GET\n/api/v1/x\n1750000000\n"+hex.EncodeToString(emptyHash[:]))
-	if sig != expected {
-		t.Fatalf("signature mismatch:\n got  %s\n want %s", sig, expected)
-	}
-}
-
-func TestSign_IncludesBodyHash(t *testing.T) {
-	c, _ := NewClient(ClientOptions{
-		KeyID: "ak", Secret: "sk", BaseURL: "https://x.test", Clock: fixedClock(42),
-	})
-	body := []byte(`{"a":1}`)
-	sig, _ := c.sign("POST", "/api/v1/things", body, "")
-
-	bodyHash := sha256.Sum256(body)
-	expected := hmacHex(t, "sk", "POST\n/api/v1/things\n42\n"+hex.EncodeToString(bodyHash[:]))
-	if sig != expected {
-		t.Fatalf("body-hash sig mismatch:\n got  %s\n want %s", sig, expected)
-	}
-}
-
-func TestSign_AppendsIdempotencyKeyLine(t *testing.T) {
-	c, _ := NewClient(ClientOptions{
-		KeyID: "ak", Secret: "sk", BaseURL: "https://x.test", Clock: fixedClock(42),
-	})
-	body := []byte(`{}`)
-
-	withoutIdem, _ := c.sign("POST", "/p", body, "")
-	withIdem, _ := c.sign("POST", "/p", body, "idem_xyz")
-
-	if withoutIdem == withIdem {
-		t.Fatal("idempotency key should change the signature")
-	}
-
-	bodyHash := sha256.Sum256(body)
-	expected := hmacHex(t, "sk",
-		"POST\n/p\n42\n"+hex.EncodeToString(bodyHash[:])+"\nidem_xyz")
-	if withIdem != expected {
-		t.Fatalf("idem-included sig mismatch:\n got  %s\n want %s", withIdem, expected)
 	}
 }
 
@@ -235,12 +144,13 @@ func TestRequest_WritesExpectedHeaders(t *testing.T) {
 	}
 
 	req := rrt.last()
-	auth := req.Headers.Get("Authorization")
-	if !strings.HasPrefix(auth, "Storlaunch-HMAC-SHA256 keyId=AKIASTOR_TEST, scope=*, signature=") {
-		t.Fatalf("authorization header wrong shape: %q", auth)
+	if auth := req.Headers.Get("Authorization"); auth != "Bearer sk_test_go" {
+		t.Fatalf("authorization header = %q, want the API key as a Bearer token", auth)
 	}
-	if ts := req.Headers.Get("X-Storlaunch-Timestamp"); ts != "1750000000" {
-		t.Fatalf("expected fixed timestamp, got %q", ts)
+	for name := range req.Headers {
+		if strings.HasPrefix(strings.ToLower(name), "x-storlaunch") {
+			t.Fatalf("unexpected %s header: the API authenticates the key alone", name)
+		}
 	}
 	if req.Headers.Get("Accept") != "application/json" {
 		t.Fatalf("missing Accept header")
@@ -266,36 +176,14 @@ func TestRequest_BodyTriggersContentType(t *testing.T) {
 	if req.Headers.Get("Content-Type") != "application/json" {
 		t.Fatalf("expected JSON Content-Type, got %q", req.Headers.Get("Content-Type"))
 	}
-	if !strings.HasPrefix(req.Headers.Get("Idempotency-Key"), "idem_") {
-		t.Fatalf("expected auto Idempotency-Key, got %q", req.Headers.Get("Idempotency-Key"))
+	if !strings.HasPrefix(req.Headers.Get("X-Idempotency-Key"), "idem_") {
+		t.Fatalf("expected auto X-Idempotency-Key, got %q", req.Headers.Get("X-Idempotency-Key"))
+	}
+	if req.Headers.Get("Idempotency-Key") != req.Headers.Get("X-Idempotency-Key") {
+		t.Fatalf("Idempotency-Key should carry the same key, got %q", req.Headers.Get("Idempotency-Key"))
 	}
 	if string(req.Body) == "" || !strings.Contains(string(req.Body), `"amount":1500`) {
 		t.Fatalf("body not serialized correctly: %q", string(req.Body))
-	}
-}
-
-func TestRequest_OnBehalfOfHeader(t *testing.T) {
-	c, _, rrt := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write(envelope(t, []any{}))
-	})
-	merchant := c.ForMerchant("acc_merchant_42")
-	if _, err := merchant.Payment.Plans.List(context.Background(), nil); err != nil {
-		t.Fatalf("list: %v", err)
-	}
-	if got := rrt.last().Headers.Get("X-Storlaunch-On-Behalf-Of"); got != "acc_merchant_42" {
-		t.Fatalf("expected X-Storlaunch-On-Behalf-Of=acc_merchant_42, got %q", got)
-	}
-}
-
-func TestRequest_NoOnBehalfOfWhenUnset(t *testing.T) {
-	c, _, rrt := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write(envelope(t, []any{}))
-	})
-	if _, err := c.Payment.Plans.List(context.Background(), nil); err != nil {
-		t.Fatalf("list: %v", err)
-	}
-	if got := rrt.last().Headers.Get("X-Storlaunch-On-Behalf-Of"); got != "" {
-		t.Fatalf("expected no on-behalf-of header, got %q", got)
 	}
 }
 
@@ -369,20 +257,18 @@ func TestRoundTrip_BillingCheckout(t *testing.T) {
 	c, _, rrt := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write(envelope(t, map[string]any{"checkoutUrl": "https://pay.test/abc"}))
 	})
-	out, err := c.Billing.Checkout(context.Background(), BillingCheckoutInput{
-		PlanID:     "plan_pro",
-		SuccessURL: "https://x.test/ok",
-		CancelURL:  "https://x.test/cancel",
-	})
+	out, err := c.Billing.Checkout(context.Background(), BillingCheckoutInput{Plan: "pro", Interval: "year"})
 	if err != nil {
 		t.Fatalf("checkout: %v", err)
 	}
 	if out["checkoutUrl"] != "https://pay.test/abc" {
 		t.Fatalf("unexpected data: %v", out)
 	}
-	body := string(rrt.last().Body)
-	if !strings.Contains(body, `"planId":"plan_pro"`) {
-		t.Fatalf("expected planId in body, got %q", body)
+	if !strings.HasSuffix(rrt.last().URL, "/api/v1/billing/plugipay-invoice") {
+		t.Fatalf("unexpected URL: %q", rrt.last().URL)
+	}
+	if body := string(rrt.last().Body); body != `{"plan":"pro","interval":"year"}` {
+		t.Fatalf("unexpected body %q", body)
 	}
 }
 
@@ -416,21 +302,36 @@ func TestRoundTrip_AccountDomainsAdd(t *testing.T) {
 	}
 }
 
-func TestRoundTrip_BuyerDeleteAddress(t *testing.T) {
+func TestRoundTrip_SubscriptionsCancelIs204(t *testing.T) {
 	c, _, rrt := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodDelete {
-			t.Errorf("expected DELETE, got %s", r.Method)
-		}
-		if r.URL.Path != "/api/v1/checkout/addresses/addr_9" {
-			t.Errorf("unexpected path %q", r.URL.Path)
-		}
-		_, _ = w.Write(envelope(t, map[string]any{"deleted": true}))
+		w.WriteHeader(http.StatusNoContent)
 	})
-	if _, err := c.Buyer.DeleteAddress(context.Background(), "addr_9"); err != nil {
-		t.Fatalf("delete: %v", err)
+	out, err := c.Payment.Subscriptions.Cancel(context.Background(), "sub_9", true)
+	if err != nil {
+		t.Fatalf("cancel: %v", err)
 	}
-	if rrt.last().Method != http.MethodDelete {
-		t.Fatalf("delete method not honored")
+	if out != nil {
+		t.Fatalf("a 204 has no data, got %v", out)
+	}
+	if req := rrt.last(); req.Method != http.MethodDelete || !strings.HasSuffix(req.URL, "/api/v1/payment/subscriptions/sub_9?immediate=true") {
+		t.Fatalf("unexpected request %s %s", req.Method, req.URL)
+	}
+}
+
+func TestRoundTrip_ExportLedgerReturnsCSV(t *testing.T) {
+	c, _, rrt := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+		_, _ = w.Write([]byte("id,amount\nle_1,100\n"))
+	})
+	csv, err := c.Reports.ExportLedger(context.Background())
+	if err != nil {
+		t.Fatalf("export: %v", err)
+	}
+	if csv != "id,amount\nle_1,100\n" {
+		t.Fatalf("unexpected csv %q", csv)
+	}
+	if !strings.HasSuffix(rrt.last().URL, "/api/v1/ledger/entries.csv") {
+		t.Fatalf("unexpected URL: %q", rrt.last().URL)
 	}
 }
 

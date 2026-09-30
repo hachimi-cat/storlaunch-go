@@ -16,16 +16,15 @@ type (
 
 func (c *Client) installResources() {
 	c.Payment = &PaymentResource{
-		CheckoutSessions:  &paymentCheckoutSessions{c: c},
-		Plans:             &paymentPlans{c: c},
-		Subscriptions:     &paymentSubscriptions{c: c},
-		Invoices:          &paymentInvoices{c: c},
-		Receipts:          &paymentReceipts{c: c},
-		Customers:         &paymentCustomers{c: c},
-		PlugipaySettings:  &paymentPlugipaySettings{c: c},
-		PortalSessions:    &paymentPortalSessions{c: c},
-		WebhookEndpoints:  &paymentWebhookEndpoints{c: c},
-		WebhookEvents:     &paymentWebhookEvents{c: c},
+		CheckoutSessions: &paymentCheckoutSessions{c: c},
+		Plans:            &paymentPlans{c: c},
+		Subscriptions:    &paymentSubscriptions{c: c},
+		Invoices:         &paymentInvoices{c: c},
+		Receipts:         &paymentReceipts{c: c},
+		Customers:        &paymentCustomers{c: c},
+		PortalSessions:   &paymentPortalSessions{c: c},
+		WebhookEndpoints: &paymentWebhookEndpoints{c: c},
+		WebhookEvents:    &paymentWebhookEvents{c: c},
 	}
 	c.Storefront = &StorefrontResource{
 		Products:   &storefrontProducts{c: c},
@@ -34,15 +33,15 @@ func (c *Client) installResources() {
 		Public:     &storefrontPublic{c: c},
 	}
 	c.Account = &AccountResource{
-		c:              c,
-		Pixels:         &accountPixels{c: c},
-		AbandonedCart:  &accountAbandonedCart{c: c},
-		Feeds:          &accountFeeds{c: c},
-		Blog:           &accountBlog{c: c},
-		Referrals:      &accountReferrals{c: c},
-		APIKeys:        &accountAPIKeys{c: c},
-		AuditLog:       &accountAuditLog{c: c},
-		Domains:        &accountDomains{c: c},
+		c:             c,
+		Pixels:        &accountPixels{c: c},
+		AbandonedCart: &accountAbandonedCart{c: c},
+		Feeds:         &accountFeeds{c: c},
+		Blog:          &accountBlog{c: c},
+		Referrals:     &accountReferrals{c: c},
+		APIKeys:       &accountAPIKeys{c: c},
+		AuditLog:      &accountAuditLog{c: c},
+		Domains:       &accountDomains{c: c},
 	}
 	c.Analytics = &AnalyticsResource{c: c}
 	c.Billing = &BillingResource{c: c}
@@ -55,8 +54,6 @@ func (c *Client) installResources() {
 	c.Reports = &ReportsResource{c: c}
 	c.Payouts = &PayoutsResource{c: c}
 	c.DiscountCodes = &DiscountCodesResource{c: c}
-	c.InboundWebhooks = &InboundWebhooksResource{c: c}
-	c.Buyer = &BuyerResource{c: c}
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -70,7 +67,6 @@ type PaymentResource struct {
 	Invoices         PaymentInvoices
 	Receipts         PaymentReceipts
 	Customers        PaymentCustomers
-	PlugipaySettings PaymentPlugipaySettings
 	PortalSessions   PaymentPortalSessions
 	WebhookEndpoints PaymentWebhookEndpoints
 	WebhookEvents    PaymentWebhookEvents
@@ -116,15 +112,18 @@ func (r *paymentPlans) Create(ctx context.Context, input Object) (Object, error)
 func (r *paymentPlans) Update(ctx context.Context, id string, patch Object) (Object, error) {
 	return doObject(ctx, r.c, http.MethodPatch, "/api/v1/payment/plans/"+id, patch, "")
 }
+
+// Archive archives the plan (DELETE /payment/plans/{id}); existing subscribers keep it.
 func (r *paymentPlans) Archive(ctx context.Context, id string) (Object, error) {
-	return doObject(ctx, r.c, http.MethodPost, "/api/v1/payment/plans/"+id+"/archive", Object{}, "")
+	return doObject(ctx, r.c, http.MethodDelete, "/api/v1/payment/plans/"+id, nil, "")
 }
 
 type PaymentSubscriptions interface {
 	List(ctx context.Context, params map[string]any) (List, error)
 	Get(ctx context.Context, id string) (Object, error)
 	Create(ctx context.Context, input Object) (Object, error)
-	Cancel(ctx context.Context, id string, input Object) (Object, error)
+	// Cancel cancels at the end of the current period, or now when immediate.
+	Cancel(ctx context.Context, id string, immediate bool) (Object, error)
 }
 
 type paymentSubscriptions struct{ c *Client }
@@ -138,19 +137,17 @@ func (r *paymentSubscriptions) Get(ctx context.Context, id string) (Object, erro
 func (r *paymentSubscriptions) Create(ctx context.Context, input Object) (Object, error) {
 	return doObject(ctx, r.c, http.MethodPost, "/api/v1/payment/subscriptions", input, r.c.genIdem())
 }
-func (r *paymentSubscriptions) Cancel(ctx context.Context, id string, input Object) (Object, error) {
-	if input == nil {
-		input = Object{}
+func (r *paymentSubscriptions) Cancel(ctx context.Context, id string, immediate bool) (Object, error) {
+	path := "/api/v1/payment/subscriptions/" + id
+	if immediate {
+		path += "?immediate=true"
 	}
-	return doObject(ctx, r.c, http.MethodPost, "/api/v1/payment/subscriptions/"+id+"/cancel", input, "")
+	return doObject(ctx, r.c, http.MethodDelete, path, nil, "")
 }
 
 type PaymentInvoices interface {
 	List(ctx context.Context, params map[string]any) (List, error)
 	Get(ctx context.Context, id string) (Object, error)
-	Finalize(ctx context.Context, id string) (Object, error)
-	Pay(ctx context.Context, id string) (Object, error)
-	Void(ctx context.Context, id string) (Object, error)
 }
 
 type paymentInvoices struct{ c *Client }
@@ -160,15 +157,6 @@ func (r *paymentInvoices) List(ctx context.Context, params map[string]any) (List
 }
 func (r *paymentInvoices) Get(ctx context.Context, id string) (Object, error) {
 	return doObject(ctx, r.c, http.MethodGet, "/api/v1/payment/invoices/"+id, nil, "")
-}
-func (r *paymentInvoices) Finalize(ctx context.Context, id string) (Object, error) {
-	return doObject(ctx, r.c, http.MethodPost, "/api/v1/payment/invoices/"+id+"/finalize", Object{}, "")
-}
-func (r *paymentInvoices) Pay(ctx context.Context, id string) (Object, error) {
-	return doObject(ctx, r.c, http.MethodPost, "/api/v1/payment/invoices/"+id+"/pay", Object{}, r.c.genIdem())
-}
-func (r *paymentInvoices) Void(ctx context.Context, id string) (Object, error) {
-	return doObject(ctx, r.c, http.MethodPost, "/api/v1/payment/invoices/"+id+"/void", Object{}, "")
 }
 
 type PaymentReceipts interface {
@@ -207,20 +195,6 @@ func (r *paymentCustomers) Update(ctx context.Context, id string, patch Object) 
 	return doObject(ctx, r.c, http.MethodPatch, "/api/v1/payment/customers/"+id, patch, "")
 }
 
-type PaymentPlugipaySettings interface {
-	Get(ctx context.Context) (Object, error)
-	Update(ctx context.Context, patch Object) (Object, error)
-}
-
-type paymentPlugipaySettings struct{ c *Client }
-
-func (r *paymentPlugipaySettings) Get(ctx context.Context) (Object, error) {
-	return doObject(ctx, r.c, http.MethodGet, "/api/v1/payment/plugipay-settings", nil, "")
-}
-func (r *paymentPlugipaySettings) Update(ctx context.Context, patch Object) (Object, error) {
-	return doObject(ctx, r.c, http.MethodPatch, "/api/v1/payment/plugipay-settings", patch, "")
-}
-
 // PortalSessionInput is the typed payload for PortalSessions.Create —
 // the only route on PaymentResource that has a strictly required shape.
 type PortalSessionInput struct {
@@ -235,7 +209,7 @@ type PaymentPortalSessions interface {
 type paymentPortalSessions struct{ c *Client }
 
 func (r *paymentPortalSessions) Create(ctx context.Context, input PortalSessionInput) (Object, error) {
-	return doObject(ctx, r.c, http.MethodPost, "/api/v1/payment/portal-sessions", input, "")
+	return doObject(ctx, r.c, http.MethodPost, "/api/v1/payment/portal-sessions", input, r.c.genIdem())
 }
 
 // WebhookEndpointInput mirrors the Node `{ url; events? }` payload.
@@ -293,7 +267,6 @@ type StorefrontProducts interface {
 	Create(ctx context.Context, input Object) (Object, error)
 	Update(ctx context.Context, id string, patch Object) (Object, error)
 	Archive(ctx context.Context, id string) (Object, error)
-	ListFiles(ctx context.Context, productID string) (List, error)
 	AddFile(ctx context.Context, productID string, input Object) (Object, error)
 	RemoveFile(ctx context.Context, productID, fileID string) (Object, error)
 }
@@ -315,9 +288,6 @@ func (r *storefrontProducts) Update(ctx context.Context, id string, patch Object
 func (r *storefrontProducts) Archive(ctx context.Context, id string) (Object, error) {
 	return doObject(ctx, r.c, http.MethodDelete, "/api/v1/storefront/products/"+id, nil, "")
 }
-func (r *storefrontProducts) ListFiles(ctx context.Context, productID string) (List, error) {
-	return doList(ctx, r.c, http.MethodGet, "/api/v1/storefront/products/"+productID+"/files", nil, "")
-}
 func (r *storefrontProducts) AddFile(ctx context.Context, productID string, input Object) (Object, error) {
 	return doObject(ctx, r.c, http.MethodPost, "/api/v1/storefront/products/"+productID+"/files", input, "")
 }
@@ -329,7 +299,8 @@ type StorefrontLicenses interface {
 	List(ctx context.Context, params map[string]any) (List, error)
 	Get(ctx context.Context, id string) (Object, error)
 	Issue(ctx context.Context, input Object) (Object, error)
-	Revoke(ctx context.Context, id string) (Object, error)
+	// Revoke revokes a license by its key (DELETE /storefront/licenses/{key}).
+	Revoke(ctx context.Context, key string) (Object, error)
 }
 
 type storefrontLicenses struct{ c *Client }
@@ -343,14 +314,13 @@ func (r *storefrontLicenses) Get(ctx context.Context, id string) (Object, error)
 func (r *storefrontLicenses) Issue(ctx context.Context, input Object) (Object, error) {
 	return doObject(ctx, r.c, http.MethodPost, "/api/v1/storefront/licenses", input, r.c.genIdem())
 }
-func (r *storefrontLicenses) Revoke(ctx context.Context, id string) (Object, error) {
-	return doObject(ctx, r.c, http.MethodPost, "/api/v1/storefront/licenses/"+id+"/revoke", Object{}, "")
+func (r *storefrontLicenses) Revoke(ctx context.Context, key string) (Object, error) {
+	return doObject(ctx, r.c, http.MethodDelete, "/api/v1/storefront/licenses/"+key, nil, "")
 }
 
 type StorefrontDeliveries interface {
 	List(ctx context.Context, params map[string]any) (List, error)
 	Get(ctx context.Context, id string) (Object, error)
-	Create(ctx context.Context, input Object) (Object, error)
 }
 
 type storefrontDeliveries struct{ c *Client }
@@ -360,9 +330,6 @@ func (r *storefrontDeliveries) List(ctx context.Context, params map[string]any) 
 }
 func (r *storefrontDeliveries) Get(ctx context.Context, id string) (Object, error) {
 	return doObject(ctx, r.c, http.MethodGet, "/api/v1/storefront/deliveries/"+id, nil, "")
-}
-func (r *storefrontDeliveries) Create(ctx context.Context, input Object) (Object, error) {
-	return doObject(ctx, r.c, http.MethodPost, "/api/v1/storefront/deliveries", input, r.c.genIdem())
 }
 
 type StorefrontPublic interface {
@@ -380,15 +347,15 @@ func (r *storefrontPublic) Get(ctx context.Context, slug string) (Object, error)
 // ═══════════════════════════════════════════════════════════════════════
 
 type AccountResource struct {
-	c              *Client
-	Pixels         AccountPixels
-	AbandonedCart  AccountAbandonedCart
-	Feeds          AccountFeeds
-	Blog           AccountBlog
-	Referrals      AccountReferrals
-	APIKeys        AccountAPIKeys
-	AuditLog       AccountAuditLog
-	Domains        AccountDomains
+	c             *Client
+	Pixels        AccountPixels
+	AbandonedCart AccountAbandonedCart
+	Feeds         AccountFeeds
+	Blog          AccountBlog
+	Referrals     AccountReferrals
+	APIKeys       AccountAPIKeys
+	AuditLog      AccountAuditLog
+	Domains       AccountDomains
 }
 
 // Profile fetches the merchant profile attached to the calling key.
@@ -444,7 +411,8 @@ func (r *accountFeeds) UpdateConfig(ctx context.Context, patch Object) (Object, 
 }
 
 type AccountBlog interface {
-	List(ctx context.Context, params map[string]any) (List, error)
+	// List returns {posts: [...]}.
+	List(ctx context.Context, params map[string]any) (Object, error)
 	Get(ctx context.Context, id string) (Object, error)
 	Create(ctx context.Context, input Object) (Object, error)
 	Update(ctx context.Context, id string, patch Object) (Object, error)
@@ -454,8 +422,8 @@ type AccountBlog interface {
 
 type accountBlog struct{ c *Client }
 
-func (r *accountBlog) List(ctx context.Context, params map[string]any) (List, error) {
-	return doList(ctx, r.c, http.MethodGet, "/api/v1/account/blog/posts"+qs(params), nil, "")
+func (r *accountBlog) List(ctx context.Context, params map[string]any) (Object, error) {
+	return doObject(ctx, r.c, http.MethodGet, "/api/v1/account/blog/posts"+qs(params), nil, "")
 }
 func (r *accountBlog) Get(ctx context.Context, id string) (Object, error) {
 	return doObject(ctx, r.c, http.MethodGet, "/api/v1/account/blog/posts/"+id, nil, "")
@@ -475,7 +443,7 @@ func (r *accountBlog) Delete(ctx context.Context, id string) (Object, error) {
 
 type AccountReferrals interface {
 	GetProgram(ctx context.Context) (Object, error)
-	UpdateProgram(ctx context.Context, patch Object) (Object, error)
+	UpdateProgram(ctx context.Context, program Object) (Object, error)
 }
 
 type accountReferrals struct{ c *Client }
@@ -483,14 +451,23 @@ type accountReferrals struct{ c *Client }
 func (r *accountReferrals) GetProgram(ctx context.Context) (Object, error) {
 	return doObject(ctx, r.c, http.MethodGet, "/api/v1/account/referrals", nil, "")
 }
-func (r *accountReferrals) UpdateProgram(ctx context.Context, patch Object) (Object, error) {
-	return doObject(ctx, r.c, http.MethodPatch, "/api/v1/account/referrals", patch, "")
+func (r *accountReferrals) UpdateProgram(ctx context.Context, program Object) (Object, error) {
+	return doObject(ctx, r.c, http.MethodPut, "/api/v1/account/referrals", program, "")
 }
 
+// AccountAPIKeys: creating and revoking keys needs a signed-in session; an
+// API key gets 403.
 type AccountAPIKeys interface {
 	List(ctx context.Context) (List, error)
-	Create(ctx context.Context, input Object) (Object, error)
+	Create(ctx context.Context, input APIKeyCreateInput) (Object, error)
 	Revoke(ctx context.Context, id string) (Object, error)
+}
+
+// APIKeyCreateInput: Environment is "production" (an sk_live_ key) or
+// "sandbox" (sk_test_).
+type APIKeyCreateInput struct {
+	Name        string `json:"name"`
+	Environment string `json:"environment"`
 }
 
 type accountAPIKeys struct{ c *Client }
@@ -498,14 +475,11 @@ type accountAPIKeys struct{ c *Client }
 func (r *accountAPIKeys) List(ctx context.Context) (List, error) {
 	return doList(ctx, r.c, http.MethodGet, "/api/v1/account/api-keys", nil, "")
 }
-func (r *accountAPIKeys) Create(ctx context.Context, input Object) (Object, error) {
-	if input == nil {
-		input = Object{}
-	}
+func (r *accountAPIKeys) Create(ctx context.Context, input APIKeyCreateInput) (Object, error) {
 	return doObject(ctx, r.c, http.MethodPost, "/api/v1/account/api-keys", input, r.c.genIdem())
 }
 func (r *accountAPIKeys) Revoke(ctx context.Context, id string) (Object, error) {
-	return doObject(ctx, r.c, http.MethodPost, "/api/v1/account/api-keys/"+id+"/revoke", Object{}, "")
+	return doObject(ctx, r.c, http.MethodDelete, "/api/v1/account/api-keys/"+id, nil, "")
 }
 
 type AccountAuditLog interface {
@@ -554,12 +528,6 @@ type AnalyticsResource struct{ c *Client }
 func (r *AnalyticsResource) Overview(ctx context.Context) (Object, error) {
 	return doObject(ctx, r.c, http.MethodGet, "/api/v1/analytics/overview", nil, "")
 }
-func (r *AnalyticsResource) Storefront(ctx context.Context, params map[string]any) (Object, error) {
-	return doObject(ctx, r.c, http.MethodGet, "/api/v1/analytics/storefront"+qs(params), nil, "")
-}
-func (r *AnalyticsResource) Funnel(ctx context.Context, params map[string]any) (Object, error) {
-	return doObject(ctx, r.c, http.MethodGet, "/api/v1/analytics/funnel"+qs(params), nil, "")
-}
 
 // ═══════════════════════════════════════════════════════════════════════
 // BILLING
@@ -569,9 +537,6 @@ type BillingResource struct{ c *Client }
 
 func (r *BillingResource) Plans(ctx context.Context) (List, error) {
 	return doList(ctx, r.c, http.MethodGet, "/api/v1/billing/plans", nil, "")
-}
-func (r *BillingResource) CurrentPlan(ctx context.Context) (Object, error) {
-	return doObject(ctx, r.c, http.MethodGet, "/api/v1/billing/plan", nil, "")
 }
 func (r *BillingResource) Subscription(ctx context.Context) (Object, error) {
 	return doObject(ctx, r.c, http.MethodGet, "/api/v1/billing/subscription", nil, "")
@@ -584,14 +549,17 @@ func (r *BillingResource) Invoices(ctx context.Context, params map[string]any) (
 }
 
 // BillingCheckoutInput is the typed payload for BillingResource.Checkout.
+// Plan is "pro", "business" or "scale"; Interval "month" (default) or "year".
 type BillingCheckoutInput struct {
-	PlanID     string `json:"planId"`
-	SuccessURL string `json:"successUrl,omitempty"`
-	CancelURL  string `json:"cancelUrl,omitempty"`
+	Plan     string `json:"plan"`
+	Interval string `json:"interval,omitempty"`
+	Currency string `json:"currency,omitempty"`
 }
 
+// Checkout upgrades: it starts a Plugipay subscription for the tier and
+// returns where to pay (POST /billing/plugipay-invoice).
 func (r *BillingResource) Checkout(ctx context.Context, input BillingCheckoutInput) (Object, error) {
-	return doObject(ctx, r.c, http.MethodPost, "/api/v1/billing/checkout", input, "")
+	return doObject(ctx, r.c, http.MethodPost, "/api/v1/billing/plugipay-invoice", input, r.c.genIdem())
 }
 func (r *BillingResource) Cancel(ctx context.Context) (Object, error) {
 	return doObject(ctx, r.c, http.MethodPost, "/api/v1/billing/cancel", Object{}, "")
@@ -603,17 +571,18 @@ func (r *BillingResource) Cancel(ctx context.Context) (Object, error) {
 
 type ModulesResource struct{ c *Client }
 
-func (r *ModulesResource) List(ctx context.Context) (List, error) {
-	return doList(ctx, r.c, http.MethodGet, "/api/v1/modules", nil, "")
+// List returns {modules, allowed, plan}: each module's on/off state and
+// which modules the plan allows.
+func (r *ModulesResource) List(ctx context.Context) (Object, error) {
+	return doObject(ctx, r.c, http.MethodGet, "/api/v1/modules", nil, "")
 }
+
+// Enable turns a module on: "payment", "fulfillment" or "marketing".
 func (r *ModulesResource) Enable(ctx context.Context, name string) (Object, error) {
-	return doObject(ctx, r.c, http.MethodPost, "/api/v1/modules/"+name+"/enable", Object{}, "")
+	return doObject(ctx, r.c, http.MethodPost, "/api/v1/modules", Object{"module": name, "enabled": true}, "")
 }
 func (r *ModulesResource) Disable(ctx context.Context, name string) (Object, error) {
-	return doObject(ctx, r.c, http.MethodPost, "/api/v1/modules/"+name+"/disable", Object{}, "")
-}
-func (r *ModulesResource) Status(ctx context.Context, name string) (Object, error) {
-	return doObject(ctx, r.c, http.MethodGet, "/api/v1/modules/"+name, nil, "")
+	return doObject(ctx, r.c, http.MethodPost, "/api/v1/modules", Object{"module": name, "enabled": false}, "")
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -624,9 +593,6 @@ type ManualOrdersResource struct{ c *Client }
 
 func (r *ManualOrdersResource) List(ctx context.Context, params map[string]any) (List, error) {
 	return doList(ctx, r.c, http.MethodGet, "/api/v1/manual-orders"+qs(params), nil, "")
-}
-func (r *ManualOrdersResource) Create(ctx context.Context, input Object) (Object, error) {
-	return doObject(ctx, r.c, http.MethodPost, "/api/v1/manual-orders", input, r.c.genIdem())
 }
 func (r *ManualOrdersResource) Get(ctx context.Context, id string) (Object, error) {
 	return doObject(ctx, r.c, http.MethodGet, "/api/v1/manual-orders/"+id, nil, "")
@@ -641,11 +607,10 @@ type OnboardingResource struct{ c *Client }
 func (r *OnboardingResource) Status(ctx context.Context) (Object, error) {
 	return doObject(ctx, r.c, http.MethodGet, "/api/v1/onboarding", nil, "")
 }
-func (r *OnboardingResource) CompleteStep(ctx context.Context, step string, input Object) (Object, error) {
-	if input == nil {
-		input = Object{}
-	}
-	return doObject(ctx, r.c, http.MethodPost, "/api/v1/onboarding/"+step, input, "")
+
+// Complete marks onboarding done; enablePayment also turns on the Payment module.
+func (r *OnboardingResource) Complete(ctx context.Context, enablePayment bool) (Object, error) {
+	return doObject(ctx, r.c, http.MethodPost, "/api/v1/onboarding/complete", Object{"enablePayment": enablePayment}, "")
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -679,8 +644,9 @@ func (r *ShippingResource) CreateShipment(ctx context.Context, input Object) (Ob
 
 type InventoryResource struct{ c *Client }
 
+// Levels returns one variant's stock levels: params["variantId"] is required.
 func (r *InventoryResource) Levels(ctx context.Context, params map[string]any) (List, error) {
-	return doList(ctx, r.c, http.MethodGet, "/api/v1/inventory/levels"+qs(params), nil, "")
+	return doList(ctx, r.c, http.MethodGet, "/api/v1/inventory/stock"+qs(params), nil, "")
 }
 func (r *InventoryResource) Movements(ctx context.Context, params map[string]any) (List, error) {
 	return doList(ctx, r.c, http.MethodGet, "/api/v1/inventory/movements"+qs(params), nil, "")
@@ -702,13 +668,13 @@ func (r *InventoryResource) AddWarehouse(ctx context.Context, input Object) (Obj
 type LedgerResource struct{ c *Client }
 
 func (r *LedgerResource) List(ctx context.Context, params map[string]any) (List, error) {
-	return doList(ctx, r.c, http.MethodGet, "/api/v1/ledger"+qs(params), nil, "")
+	return doList(ctx, r.c, http.MethodGet, "/api/v1/ledger/entries"+qs(params), nil, "")
 }
-func (r *LedgerResource) Balances(ctx context.Context) (List, error) {
-	return doList(ctx, r.c, http.MethodGet, "/api/v1/ledger/balances", nil, "")
+func (r *LedgerResource) Balances(ctx context.Context) (Object, error) {
+	return doObject(ctx, r.c, http.MethodGet, "/api/v1/ledger/balance", nil, "")
 }
 func (r *LedgerResource) Adjust(ctx context.Context, input Object) (Object, error) {
-	return doObject(ctx, r.c, http.MethodPost, "/api/v1/ledger/adjust", input, r.c.genIdem())
+	return doObject(ctx, r.c, http.MethodPost, "/api/v1/ledger/adjustments", input, r.c.genIdem())
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -730,19 +696,11 @@ func (r *ReportsResource) CashFlow(ctx context.Context, p DateRange) (Object, er
 	return doObject(ctx, r.c, http.MethodGet, "/api/v1/reports/cash-flow"+qs(map[string]any{"from": p.From, "to": p.To}), nil, "")
 }
 
-// ExportLedgerParams adds an optional format flag to a DateRange window.
-type ExportLedgerParams struct {
-	From   string
-	To     string
-	Format string // "csv" | "json"
-}
-
-func (r *ReportsResource) ExportLedger(ctx context.Context, p ExportLedgerParams) (Object, error) {
-	params := map[string]any{"from": p.From, "to": p.To}
-	if p.Format != "" {
-		params["format"] = p.Format
-	}
-	return doObject(ctx, r.c, http.MethodGet, "/api/v1/reports/export-ledger"+qs(params), nil, "")
+// ExportLedger returns the whole ledger as CSV text (GET /ledger/entries.csv).
+func (r *ReportsResource) ExportLedger(ctx context.Context) (string, error) {
+	var csv string
+	err := r.c.Request(ctx, RequestArgs{Method: http.MethodGet, Path: "/api/v1/ledger/entries.csv", Out: &csv})
+	return csv, err
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -784,50 +742,6 @@ func (r *DiscountCodesResource) Create(ctx context.Context, input Object) (Objec
 }
 func (r *DiscountCodesResource) Update(ctx context.Context, id string, patch Object) (Object, error) {
 	return doObject(ctx, r.c, http.MethodPatch, "/api/v1/discount-codes/"+id, patch, "")
-}
-
-// DiscountCodeValidateInput pins the strict shape for Validate.
-type DiscountCodeValidateInput struct {
-	Code string `json:"code"`
-}
-
-func (r *DiscountCodesResource) Validate(ctx context.Context, input DiscountCodeValidateInput) (Object, error) {
-	return doObject(ctx, r.c, http.MethodPost, "/api/v1/discount-codes/validate", input, "")
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// INBOUND WEBHOOKS
-// ═══════════════════════════════════════════════════════════════════════
-
-type InboundWebhooksResource struct{ c *Client }
-
-func (r *InboundWebhooksResource) List(ctx context.Context, params map[string]any) (List, error) {
-	return doList(ctx, r.c, http.MethodGet, "/api/v1/webhooks"+qs(params), nil, "")
-}
-func (r *InboundWebhooksResource) Get(ctx context.Context, id string) (Object, error) {
-	return doObject(ctx, r.c, http.MethodGet, "/api/v1/webhooks/"+id, nil, "")
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// BUYER (no platform auth typically — kept for SDK completeness)
-// ═══════════════════════════════════════════════════════════════════════
-
-type BuyerResource struct{ c *Client }
-
-func (r *BuyerResource) ListOrders(ctx context.Context, params map[string]any) (List, error) {
-	return doList(ctx, r.c, http.MethodGet, "/api/v1/checkout/orders"+qs(params), nil, "")
-}
-func (r *BuyerResource) GetOrder(ctx context.Context, id string) (Object, error) {
-	return doObject(ctx, r.c, http.MethodGet, "/api/v1/checkout/orders/"+id, nil, "")
-}
-func (r *BuyerResource) ListAddresses(ctx context.Context) (List, error) {
-	return doList(ctx, r.c, http.MethodGet, "/api/v1/checkout/addresses", nil, "")
-}
-func (r *BuyerResource) AddAddress(ctx context.Context, input Object) (Object, error) {
-	return doObject(ctx, r.c, http.MethodPost, "/api/v1/checkout/addresses", input, "")
-}
-func (r *BuyerResource) DeleteAddress(ctx context.Context, id string) (Object, error) {
-	return doObject(ctx, r.c, http.MethodDelete, "/api/v1/checkout/addresses/"+id, nil, "")
 }
 
 // ─── doObject / doList ───────────────────────────────────────────────────
