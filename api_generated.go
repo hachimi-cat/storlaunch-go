@@ -4826,9 +4826,22 @@ func (a *GeneratedAPI) ReportsPnl(ctx context.Context) (json.RawMessage, error) 
 	return a.c.apigenRequest(ctx, "GET", "/api/v1/reports/pnl", nil, nil)
 }
 
-// ShippingAreas calls GET /api/v1/shipping/areas: List areas.
-func (a *GeneratedAPI) ShippingAreas(ctx context.Context) (json.RawMessage, error) {
-	return a.c.apigenRequest(ctx, "GET", "/api/v1/shipping/areas", nil, nil)
+// ShippingAreasArgs are the inputs of GeneratedAPI.ShippingAreas.
+type ShippingAreasArgs struct {
+	// Q is "q" in the query.
+	Q any `query:"q"`
+}
+
+// ShippingAreas calls GET /api/v1/shipping/areas: Area search (the Biteship area ids an origin/rates call takes) lives in fulkruma.
+func (a *GeneratedAPI) ShippingAreas(ctx context.Context, p *ShippingAreasArgs) (json.RawMessage, error) {
+	if p == nil {
+		p = &ShippingAreasArgs{}
+	}
+	q := url.Values{}
+	if p.Q != nil {
+		q.Set("q", apigenQueryValue(p.Q))
+	}
+	return a.c.apigenRequest(ctx, "GET", "/api/v1/shipping/areas", q, nil)
 }
 
 // ShippingCouriers calls GET /api/v1/shipping/couriers: List couriers.
