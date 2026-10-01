@@ -18,7 +18,7 @@ type apigenTransport interface {
 	apigenRequest(ctx context.Context, method, path string, query url.Values, body map[string]any) (json.RawMessage, error)
 }
 
-// GeneratedAPI has all 299 feature routes of the Storlaunch API, one method each
+// GeneratedAPI has all 301 feature routes of the Storlaunch API, one method each
 // (generated from the API spec). A method takes the path parameters, then an *<Method>Args
 // with the query fields (tagged query) and the JSON body fields (tagged json): required
 // fields are plain values, optional ones pointers, slices or maps that nil leaves out,
@@ -122,9 +122,34 @@ func (a *GeneratedAPI) AccountAuditLog(ctx context.Context, p *AccountAuditLogAr
 	return a.c.apigenRequest(ctx, "GET", "/api/v1/account/audit-log", q, nil)
 }
 
+// AccountBlogPostsArgs are the inputs of GeneratedAPI.AccountBlogPosts.
+type AccountBlogPostsArgs struct {
+	// Status is "status" in the query. One of: draft, published.
+	Status *string `query:"status"`
+
+	// Limit is "limit" in the query.
+	Limit *int `query:"limit"`
+
+	// Cursor is "cursor" in the query.
+	Cursor *string `query:"cursor"`
+}
+
 // AccountBlogPosts calls GET /api/v1/account/blog/posts: List posts.
-func (a *GeneratedAPI) AccountBlogPosts(ctx context.Context) (json.RawMessage, error) {
-	return a.c.apigenRequest(ctx, "GET", "/api/v1/account/blog/posts", nil, nil)
+func (a *GeneratedAPI) AccountBlogPosts(ctx context.Context, p *AccountBlogPostsArgs) (json.RawMessage, error) {
+	if p == nil {
+		p = &AccountBlogPostsArgs{}
+	}
+	q := url.Values{}
+	if p.Status != nil {
+		q.Set("status", apigenQueryValue(*p.Status))
+	}
+	if p.Limit != nil {
+		q.Set("limit", apigenQueryValue(*p.Limit))
+	}
+	if p.Cursor != nil {
+		q.Set("cursor", apigenQueryValue(*p.Cursor))
+	}
+	return a.c.apigenRequest(ctx, "GET", "/api/v1/account/blog/posts", q, nil)
 }
 
 // AccountBlogPostsPublish calls POST /api/v1/account/blog/posts/{id}/publish: Publish a post.
@@ -909,19 +934,70 @@ func (a *GeneratedAPI) AccountUpdatePixels(ctx context.Context, p *AccountUpdate
 	return a.c.apigenRequest(ctx, "PATCH", "/api/v1/account/pixels", nil, payload)
 }
 
+// AnalyticsOverviewArgs are the inputs of GeneratedAPI.AnalyticsOverview.
+type AnalyticsOverviewArgs struct {
+	// Period is "period" in the query. One of: 7d, 30d, 90d, 12m.
+	Period *string `query:"period"`
+}
+
 // AnalyticsOverview calls GET /api/v1/analytics/overview: GET /analytics/overview Response shape is flat to match what the dashboard page reads (frontend/src/app/(dashboard)/dashboard/page.tsx). `recentTransactions` unions paid Invoices (Plugipay-driven) and.
-func (a *GeneratedAPI) AnalyticsOverview(ctx context.Context) (json.RawMessage, error) {
-	return a.c.apigenRequest(ctx, "GET", "/api/v1/analytics/overview", nil, nil)
+func (a *GeneratedAPI) AnalyticsOverview(ctx context.Context, p *AnalyticsOverviewArgs) (json.RawMessage, error) {
+	if p == nil {
+		p = &AnalyticsOverviewArgs{}
+	}
+	q := url.Values{}
+	if p.Period != nil {
+		q.Set("period", apigenQueryValue(*p.Period))
+	}
+	return a.c.apigenRequest(ctx, "GET", "/api/v1/analytics/overview", q, nil)
+}
+
+// AnalyticsRevenueArgs are the inputs of GeneratedAPI.AnalyticsRevenue.
+type AnalyticsRevenueArgs struct {
+	// Period is "period" in the query. One of: 7d, 30d, 90d, 12m.
+	Period *string `query:"period"`
+
+	// Granularity is "granularity" in the query. One of: day, week, month.
+	Granularity *string `query:"granularity"`
 }
 
 // AnalyticsRevenue calls GET /api/v1/analytics/revenue: GET /analytics/revenue.
-func (a *GeneratedAPI) AnalyticsRevenue(ctx context.Context) (json.RawMessage, error) {
-	return a.c.apigenRequest(ctx, "GET", "/api/v1/analytics/revenue", nil, nil)
+func (a *GeneratedAPI) AnalyticsRevenue(ctx context.Context, p *AnalyticsRevenueArgs) (json.RawMessage, error) {
+	if p == nil {
+		p = &AnalyticsRevenueArgs{}
+	}
+	q := url.Values{}
+	if p.Period != nil {
+		q.Set("period", apigenQueryValue(*p.Period))
+	}
+	if p.Granularity != nil {
+		q.Set("granularity", apigenQueryValue(*p.Granularity))
+	}
+	return a.c.apigenRequest(ctx, "GET", "/api/v1/analytics/revenue", q, nil)
+}
+
+// AnalyticsSubscriptionsArgs are the inputs of GeneratedAPI.AnalyticsSubscriptions.
+type AnalyticsSubscriptionsArgs struct {
+	// Period is "period" in the query. One of: 7d, 30d, 90d, 12m.
+	Period *string `query:"period"`
+
+	// Granularity is "granularity" in the query. One of: day, week, month.
+	Granularity *string `query:"granularity"`
 }
 
 // AnalyticsSubscriptions calls GET /api/v1/analytics/subscriptions: GET /analytics/subscriptions.
-func (a *GeneratedAPI) AnalyticsSubscriptions(ctx context.Context) (json.RawMessage, error) {
-	return a.c.apigenRequest(ctx, "GET", "/api/v1/analytics/subscriptions", nil, nil)
+func (a *GeneratedAPI) AnalyticsSubscriptions(ctx context.Context, p *AnalyticsSubscriptionsArgs) (json.RawMessage, error) {
+	if p == nil {
+		p = &AnalyticsSubscriptionsArgs{}
+	}
+	q := url.Values{}
+	if p.Period != nil {
+		q.Set("period", apigenQueryValue(*p.Period))
+	}
+	if p.Granularity != nil {
+		q.Set("granularity", apigenQueryValue(*p.Granularity))
+	}
+	return a.c.apigenRequest(ctx, "GET", "/api/v1/analytics/subscriptions", q, nil)
 }
 
 // BillingCancel calls POST /api/v1/billing/cancel: Downgrade to free.
@@ -1029,9 +1105,34 @@ func (a *GeneratedAPI) BuyersGet(ctx context.Context, id string) (json.RawMessag
 	return a.c.apigenRequest(ctx, "GET", path, nil, nil)
 }
 
+// BuyersListArgs are the inputs of GeneratedAPI.BuyersList.
+type BuyersListArgs struct {
+	// Search is "search" in the query.
+	Search *string `query:"search"`
+
+	// Limit is "limit" in the query.
+	Limit *int `query:"limit"`
+
+	// Cursor is "cursor" in the query.
+	Cursor *string `query:"cursor"`
+}
+
 // BuyersList calls GET /api/v1/buyers: List buyers.
-func (a *GeneratedAPI) BuyersList(ctx context.Context) (json.RawMessage, error) {
-	return a.c.apigenRequest(ctx, "GET", "/api/v1/buyers", nil, nil)
+func (a *GeneratedAPI) BuyersList(ctx context.Context, p *BuyersListArgs) (json.RawMessage, error) {
+	if p == nil {
+		p = &BuyersListArgs{}
+	}
+	q := url.Values{}
+	if p.Search != nil {
+		q.Set("search", apigenQueryValue(*p.Search))
+	}
+	if p.Limit != nil {
+		q.Set("limit", apigenQueryValue(*p.Limit))
+	}
+	if p.Cursor != nil {
+		q.Set("cursor", apigenQueryValue(*p.Cursor))
+	}
+	return a.c.apigenRequest(ctx, "GET", "/api/v1/buyers", q, nil)
 }
 
 // CertificationsCreateArgs are the inputs of GeneratedAPI.CertificationsCreate.
@@ -2258,9 +2359,22 @@ func (a *GeneratedAPI) ConversationsByCustomerStream(ctx context.Context, custom
 	return a.c.apigenRequest(ctx, "GET", path, nil, nil)
 }
 
+// ConversationsEmbedProductsArgs are the inputs of GeneratedAPI.ConversationsEmbedProducts.
+type ConversationsEmbedProductsArgs struct {
+	// Q is "q" in the query.
+	Q *string `query:"q"`
+}
+
 // ConversationsEmbedProducts calls GET /api/v1/conversations/embed/products: List products.
-func (a *GeneratedAPI) ConversationsEmbedProducts(ctx context.Context) (json.RawMessage, error) {
-	return a.c.apigenRequest(ctx, "GET", "/api/v1/conversations/embed/products", nil, nil)
+func (a *GeneratedAPI) ConversationsEmbedProducts(ctx context.Context, p *ConversationsEmbedProductsArgs) (json.RawMessage, error) {
+	if p == nil {
+		p = &ConversationsEmbedProductsArgs{}
+	}
+	q := url.Values{}
+	if p.Q != nil {
+		q.Set("q", apigenQueryValue(*p.Q))
+	}
+	return a.c.apigenRequest(ctx, "GET", "/api/v1/conversations/embed/products", q, nil)
 }
 
 // ConversationsList calls GET /api/v1/conversations: List conversations.
@@ -3108,9 +3222,40 @@ func (a *GeneratedAPI) ManualOrdersLicenseRevoke(ctx context.Context, deliveryID
 	return a.c.apigenRequest(ctx, "POST", path, nil, nil)
 }
 
+// ManualOrdersListArgs are the inputs of GeneratedAPI.ManualOrdersList.
+type ManualOrdersListArgs struct {
+	// Limit is "limit" in the query.
+	Limit *int `query:"limit"`
+
+	// Cursor is "cursor" in the query.
+	Cursor *string `query:"cursor"`
+
+	// PaymentStatus is "paymentStatus" in the query. One of: awaiting_payment, payment_claimed, payment_confirmed, canceled, refunded.
+	PaymentStatus *string `query:"paymentStatus"`
+
+	// FulfillmentStatus is "fulfillmentStatus" in the query. One of: preparing, ready_to_ship, shipped, delivered.
+	FulfillmentStatus *string `query:"fulfillmentStatus"`
+}
+
 // ManualOrdersList calls GET /api/v1/manual-orders: List manual orders.
-func (a *GeneratedAPI) ManualOrdersList(ctx context.Context) (json.RawMessage, error) {
-	return a.c.apigenRequest(ctx, "GET", "/api/v1/manual-orders", nil, nil)
+func (a *GeneratedAPI) ManualOrdersList(ctx context.Context, p *ManualOrdersListArgs) (json.RawMessage, error) {
+	if p == nil {
+		p = &ManualOrdersListArgs{}
+	}
+	q := url.Values{}
+	if p.Limit != nil {
+		q.Set("limit", apigenQueryValue(*p.Limit))
+	}
+	if p.Cursor != nil {
+		q.Set("cursor", apigenQueryValue(*p.Cursor))
+	}
+	if p.PaymentStatus != nil {
+		q.Set("paymentStatus", apigenQueryValue(*p.PaymentStatus))
+	}
+	if p.FulfillmentStatus != nil {
+		q.Set("fulfillmentStatus", apigenQueryValue(*p.FulfillmentStatus))
+	}
+	return a.c.apigenRequest(ctx, "GET", "/api/v1/manual-orders", q, nil)
 }
 
 // ManualOrdersTracking calls GET /api/v1/manual-orders/{id}/tracking: S-086: live Biteship tracking (driver, status, history) for orders with a Fulkruma-managed shipment.
@@ -3244,9 +3389,40 @@ func (a *GeneratedAPI) OnboardingList(ctx context.Context) (json.RawMessage, err
 	return a.c.apigenRequest(ctx, "GET", "/api/v1/onboarding", nil, nil)
 }
 
+// PaymentCheckoutSessionsArgs are the inputs of GeneratedAPI.PaymentCheckoutSessions.
+type PaymentCheckoutSessionsArgs struct {
+	// Limit is "limit" in the query.
+	Limit *int `query:"limit"`
+
+	// Cursor is "cursor" in the query.
+	Cursor *string `query:"cursor"`
+
+	// Status is "status" in the query. One of: open, completed, expired.
+	Status *string `query:"status"`
+
+	// CustomerID is "customerId" in the query.
+	CustomerID *string `query:"customerId"`
+}
+
 // PaymentCheckoutSessions calls GET /api/v1/payment/checkout-sessions: List checkout sessions.
-func (a *GeneratedAPI) PaymentCheckoutSessions(ctx context.Context) (json.RawMessage, error) {
-	return a.c.apigenRequest(ctx, "GET", "/api/v1/payment/checkout-sessions", nil, nil)
+func (a *GeneratedAPI) PaymentCheckoutSessions(ctx context.Context, p *PaymentCheckoutSessionsArgs) (json.RawMessage, error) {
+	if p == nil {
+		p = &PaymentCheckoutSessionsArgs{}
+	}
+	q := url.Values{}
+	if p.Limit != nil {
+		q.Set("limit", apigenQueryValue(*p.Limit))
+	}
+	if p.Cursor != nil {
+		q.Set("cursor", apigenQueryValue(*p.Cursor))
+	}
+	if p.Status != nil {
+		q.Set("status", apigenQueryValue(*p.Status))
+	}
+	if p.CustomerID != nil {
+		q.Set("customerId", apigenQueryValue(*p.CustomerID))
+	}
+	return a.c.apigenRequest(ctx, "GET", "/api/v1/payment/checkout-sessions", q, nil)
 }
 
 // PaymentCheckoutSessionsConfirm calls POST /api/v1/payment/checkout-sessions/{id}/confirm: Proxies to Plugipay's `POST /checkout-sessions/:id/confirm` which flips a `pending_review` session to `completed` + fires the session.completed.v1 event + marks the linked invoice paid + writes a ledg.
@@ -3654,18 +3830,21 @@ type PaymentCreateWebhookEndpointsArgs struct {
 	// URL is "url" in the body, required.
 	URL string `json:"url"`
 
-	// Events is "events" in the body, required.
-	Events []string `json:"events"`
+	// Events is "events" in the body.
+	Events []string `json:"events,omitempty"`
 
 	// Description is "description" in the body.
 	Description *string `json:"description,omitempty"`
+
+	// Active is "active" in the body.
+	Active *bool `json:"active,omitempty"`
 
 	// Body is the whole JSON body, for what the fields above do not cover; the fields
 	// that are set replace its keys.
 	Body map[string]any `json:"-"`
 }
 
-// PaymentCreateWebhookEndpoints calls POST /api/v1/payment/webhook-endpoints: Create a webhook endpoint.
+// PaymentCreateWebhookEndpoints calls POST /api/v1/payment/webhook-endpoints: Register an endpoint.
 func (a *GeneratedAPI) PaymentCreateWebhookEndpoints(ctx context.Context, p *PaymentCreateWebhookEndpointsArgs) (json.RawMessage, error) {
 	if p == nil {
 		p = &PaymentCreateWebhookEndpointsArgs{}
@@ -3680,18 +3859,43 @@ func (a *GeneratedAPI) PaymentCreateWebhookEndpoints(ctx context.Context, p *Pay
 	if p.Description != nil {
 		payload["description"] = *p.Description
 	}
+	if p.Active != nil {
+		payload["active"] = *p.Active
+	}
 	if _, ok := payload["url"]; !ok {
 		return nil, apigenMissing("PaymentCreateWebhookEndpoints", "URL")
-	}
-	if _, ok := payload["events"]; !ok {
-		return nil, apigenMissing("PaymentCreateWebhookEndpoints", "Events")
 	}
 	return a.c.apigenRequest(ctx, "POST", "/api/v1/payment/webhook-endpoints", nil, payload)
 }
 
+// PaymentCustomersArgs are the inputs of GeneratedAPI.PaymentCustomers.
+type PaymentCustomersArgs struct {
+	// Limit is "limit" in the query.
+	Limit *int `query:"limit"`
+
+	// Cursor is "cursor" in the query.
+	Cursor *string `query:"cursor"`
+
+	// Email is "email" in the query.
+	Email *string `query:"email"`
+}
+
 // PaymentCustomers calls GET /api/v1/payment/customers: List customers.
-func (a *GeneratedAPI) PaymentCustomers(ctx context.Context) (json.RawMessage, error) {
-	return a.c.apigenRequest(ctx, "GET", "/api/v1/payment/customers", nil, nil)
+func (a *GeneratedAPI) PaymentCustomers(ctx context.Context, p *PaymentCustomersArgs) (json.RawMessage, error) {
+	if p == nil {
+		p = &PaymentCustomersArgs{}
+	}
+	q := url.Values{}
+	if p.Limit != nil {
+		q.Set("limit", apigenQueryValue(*p.Limit))
+	}
+	if p.Cursor != nil {
+		q.Set("cursor", apigenQueryValue(*p.Cursor))
+	}
+	if p.Email != nil {
+		q.Set("email", apigenQueryValue(*p.Email))
+	}
+	return a.c.apigenRequest(ctx, "GET", "/api/v1/payment/customers", q, nil)
 }
 
 // PaymentDeleteCheckoutSessions calls DELETE /api/v1/payment/checkout-sessions/{id}: Remove a session that never took money.
@@ -3791,7 +3995,7 @@ func (a *GeneratedAPI) PaymentGetWebhookEndpoints(ctx context.Context, id string
 	return a.c.apigenRequest(ctx, "GET", path, nil, nil)
 }
 
-// PaymentGetWebhookEvents calls GET /api/v1/payment/webhook-events/{id}: Get a webhook event.
+// PaymentGetWebhookEvents calls GET /api/v1/payment/webhook-events/{id}: Get a webhook delivery, with every attempt made at it.
 func (a *GeneratedAPI) PaymentGetWebhookEvents(ctx context.Context, id string) (json.RawMessage, error) {
 	path := "/api/v1/payment/webhook-events/" + url.PathEscape(id)
 	return a.c.apigenRequest(ctx, "GET", path, nil, nil)
@@ -3987,9 +4191,46 @@ func (a *GeneratedAPI) PaymentGiftCardsVoid(ctx context.Context, id string, p *P
 	return a.c.apigenRequest(ctx, "POST", path, nil, payload)
 }
 
+// PaymentInvoicesArgs are the inputs of GeneratedAPI.PaymentInvoices.
+type PaymentInvoicesArgs struct {
+	// Limit is "limit" in the query.
+	Limit *int `query:"limit"`
+
+	// Cursor is "cursor" in the query.
+	Cursor *string `query:"cursor"`
+
+	// CustomerID is "customerId" in the query.
+	CustomerID *string `query:"customerId"`
+
+	// SubscriptionID is "subscriptionId" in the query.
+	SubscriptionID *string `query:"subscriptionId"`
+
+	// Status is "status" in the query. One of: draft, open, paid, overdue, void.
+	Status *string `query:"status"`
+}
+
 // PaymentInvoices calls GET /api/v1/payment/invoices: List invoices.
-func (a *GeneratedAPI) PaymentInvoices(ctx context.Context) (json.RawMessage, error) {
-	return a.c.apigenRequest(ctx, "GET", "/api/v1/payment/invoices", nil, nil)
+func (a *GeneratedAPI) PaymentInvoices(ctx context.Context, p *PaymentInvoicesArgs) (json.RawMessage, error) {
+	if p == nil {
+		p = &PaymentInvoicesArgs{}
+	}
+	q := url.Values{}
+	if p.Limit != nil {
+		q.Set("limit", apigenQueryValue(*p.Limit))
+	}
+	if p.Cursor != nil {
+		q.Set("cursor", apigenQueryValue(*p.Cursor))
+	}
+	if p.CustomerID != nil {
+		q.Set("customerId", apigenQueryValue(*p.CustomerID))
+	}
+	if p.SubscriptionID != nil {
+		q.Set("subscriptionId", apigenQueryValue(*p.SubscriptionID))
+	}
+	if p.Status != nil {
+		q.Set("status", apigenQueryValue(*p.Status))
+	}
+	return a.c.apigenRequest(ctx, "GET", "/api/v1/payment/invoices", q, nil)
 }
 
 // PaymentInvoicesExportCsv calls GET /api/v1/payment/invoices/export.csv: CSV export of invoices — up to 10k rows via paginated SDK fetch.
@@ -4009,9 +4250,34 @@ func (a *GeneratedAPI) PaymentInvoicesPdf(ctx context.Context, id string) (json.
 	return a.c.apigenRequest(ctx, "GET", path, nil, nil)
 }
 
+// PaymentPlansArgs are the inputs of GeneratedAPI.PaymentPlans.
+type PaymentPlansArgs struct {
+	// Limit is "limit" in the query.
+	Limit *int `query:"limit"`
+
+	// Cursor is "cursor" in the query.
+	Cursor *string `query:"cursor"`
+
+	// Active is "active" in the query.
+	Active *string `query:"active"`
+}
+
 // PaymentPlans calls GET /api/v1/payment/plans: List plans.
-func (a *GeneratedAPI) PaymentPlans(ctx context.Context) (json.RawMessage, error) {
-	return a.c.apigenRequest(ctx, "GET", "/api/v1/payment/plans", nil, nil)
+func (a *GeneratedAPI) PaymentPlans(ctx context.Context, p *PaymentPlansArgs) (json.RawMessage, error) {
+	if p == nil {
+		p = &PaymentPlansArgs{}
+	}
+	q := url.Values{}
+	if p.Limit != nil {
+		q.Set("limit", apigenQueryValue(*p.Limit))
+	}
+	if p.Cursor != nil {
+		q.Set("cursor", apigenQueryValue(*p.Cursor))
+	}
+	if p.Active != nil {
+		q.Set("active", apigenQueryValue(*p.Active))
+	}
+	return a.c.apigenRequest(ctx, "GET", "/api/v1/payment/plans", q, nil)
 }
 
 // PaymentPlugipaySettingsTemplatesPreviewArgs are the inputs of GeneratedAPI.PaymentPlugipaySettingsTemplatesPreview.
@@ -4202,9 +4468,46 @@ func (a *GeneratedAPI) PaymentRefunds(ctx context.Context, p *PaymentRefundsArgs
 	return a.c.apigenRequest(ctx, "GET", "/api/v1/payment/refunds", q, nil)
 }
 
+// PaymentSubscriptionsArgs are the inputs of GeneratedAPI.PaymentSubscriptions.
+type PaymentSubscriptionsArgs struct {
+	// Limit is "limit" in the query.
+	Limit *int `query:"limit"`
+
+	// Cursor is "cursor" in the query.
+	Cursor *string `query:"cursor"`
+
+	// CustomerID is "customerId" in the query.
+	CustomerID *string `query:"customerId"`
+
+	// PlanID is "planId" in the query.
+	PlanID *string `query:"planId"`
+
+	// Status is "status" in the query. One of: trialing, active, past_due, paused, canceled.
+	Status *string `query:"status"`
+}
+
 // PaymentSubscriptions calls GET /api/v1/payment/subscriptions: List subscriptions.
-func (a *GeneratedAPI) PaymentSubscriptions(ctx context.Context) (json.RawMessage, error) {
-	return a.c.apigenRequest(ctx, "GET", "/api/v1/payment/subscriptions", nil, nil)
+func (a *GeneratedAPI) PaymentSubscriptions(ctx context.Context, p *PaymentSubscriptionsArgs) (json.RawMessage, error) {
+	if p == nil {
+		p = &PaymentSubscriptionsArgs{}
+	}
+	q := url.Values{}
+	if p.Limit != nil {
+		q.Set("limit", apigenQueryValue(*p.Limit))
+	}
+	if p.Cursor != nil {
+		q.Set("cursor", apigenQueryValue(*p.Cursor))
+	}
+	if p.CustomerID != nil {
+		q.Set("customerId", apigenQueryValue(*p.CustomerID))
+	}
+	if p.PlanID != nil {
+		q.Set("planId", apigenQueryValue(*p.PlanID))
+	}
+	if p.Status != nil {
+		q.Set("status", apigenQueryValue(*p.Status))
+	}
+	return a.c.apigenRequest(ctx, "GET", "/api/v1/payment/subscriptions", q, nil)
 }
 
 // PaymentUpdateCustomersArgs are the inputs of GeneratedAPI.PaymentUpdateCustomers.
@@ -4373,12 +4676,15 @@ type PaymentUpdateWebhookEndpointsArgs struct {
 	// Description is "description" in the body.
 	Description *string `json:"description,omitempty"`
 
+	// RotateSecret is "rotateSecret" in the body.
+	RotateSecret *bool `json:"rotateSecret,omitempty"`
+
 	// Body is the whole JSON body, for what the fields above do not cover; the fields
 	// that are set replace its keys.
 	Body map[string]any `json:"-"`
 }
 
-// PaymentUpdateWebhookEndpoints calls PATCH /api/v1/payment/webhook-endpoints/{id}: Update a webhook endpoint.
+// PaymentUpdateWebhookEndpoints calls PATCH /api/v1/payment/webhook-endpoints/{id}: Update an endpoint. `active: false` pauses it (its queued deliveries become failed); `active: true` re-enables it — also after Storlaunch switched it off for failing — and clears its failure streak.
 func (a *GeneratedAPI) PaymentUpdateWebhookEndpoints(ctx context.Context, id string, p *PaymentUpdateWebhookEndpointsArgs) (json.RawMessage, error) {
 	if p == nil {
 		p = &PaymentUpdateWebhookEndpointsArgs{}
@@ -4396,21 +4702,97 @@ func (a *GeneratedAPI) PaymentUpdateWebhookEndpoints(ctx context.Context, id str
 	if p.Description != nil {
 		payload["description"] = *p.Description
 	}
+	if p.RotateSecret != nil {
+		payload["rotateSecret"] = *p.RotateSecret
+	}
 	path := "/api/v1/payment/webhook-endpoints/" + url.PathEscape(id)
 	return a.c.apigenRequest(ctx, "PATCH", path, nil, payload)
 }
 
-// PaymentWebhookEndpoints calls GET /api/v1/payment/webhook-endpoints: List webhook endpoints.
-func (a *GeneratedAPI) PaymentWebhookEndpoints(ctx context.Context) (json.RawMessage, error) {
-	return a.c.apigenRequest(ctx, "GET", "/api/v1/payment/webhook-endpoints", nil, nil)
+// PaymentWebhookEndpointsArgs are the inputs of GeneratedAPI.PaymentWebhookEndpoints.
+type PaymentWebhookEndpointsArgs struct {
+	// Limit is "limit" in the query.
+	Limit *int `query:"limit"`
+
+	// Cursor is "cursor" in the query.
+	Cursor *string `query:"cursor"`
 }
 
-// PaymentWebhookEvents calls GET /api/v1/payment/webhook-events: List webhook events.
-func (a *GeneratedAPI) PaymentWebhookEvents(ctx context.Context) (json.RawMessage, error) {
-	return a.c.apigenRequest(ctx, "GET", "/api/v1/payment/webhook-events", nil, nil)
+// PaymentWebhookEndpoints calls GET /api/v1/payment/webhook-endpoints: List endpoints, newest first.
+func (a *GeneratedAPI) PaymentWebhookEndpoints(ctx context.Context, p *PaymentWebhookEndpointsArgs) (json.RawMessage, error) {
+	if p == nil {
+		p = &PaymentWebhookEndpointsArgs{}
+	}
+	q := url.Values{}
+	if p.Limit != nil {
+		q.Set("limit", apigenQueryValue(*p.Limit))
+	}
+	if p.Cursor != nil {
+		q.Set("cursor", apigenQueryValue(*p.Cursor))
+	}
+	return a.c.apigenRequest(ctx, "GET", "/api/v1/payment/webhook-endpoints", q, nil)
 }
 
-// PaymentWebhookEventsResend calls POST /api/v1/payment/webhook-events/{id}/resend: Resend a webhook event.
+// PaymentWebhookEndpointsEventTypes calls GET /api/v1/payment/webhook-endpoints/event-types: The event types an endpoint can subscribe to: Storlaunch's own catalogue, and — with the Payment module on — Plugipay's (delivered by Plugipay to the same endpoint).
+func (a *GeneratedAPI) PaymentWebhookEndpointsEventTypes(ctx context.Context) (json.RawMessage, error) {
+	return a.c.apigenRequest(ctx, "GET", "/api/v1/payment/webhook-endpoints/event-types", nil, nil)
+}
+
+// PaymentWebhookEndpointsTest calls POST /api/v1/payment/webhook-endpoints/{id}/test: Send a test event.
+func (a *GeneratedAPI) PaymentWebhookEndpointsTest(ctx context.Context, id string) (json.RawMessage, error) {
+	path := "/api/v1/payment/webhook-endpoints/" + url.PathEscape(id) + "/test"
+	return a.c.apigenRequest(ctx, "POST", path, nil, nil)
+}
+
+// PaymentWebhookEventsArgs are the inputs of GeneratedAPI.PaymentWebhookEvents.
+type PaymentWebhookEventsArgs struct {
+	// Limit is "limit" in the query.
+	Limit *int `query:"limit"`
+
+	// Cursor is "cursor" in the query.
+	Cursor *string `query:"cursor"`
+
+	// Type is "type" in the query.
+	Type *string `query:"type"`
+
+	// EndpointID is "endpointId" in the query.
+	EndpointID *string `query:"endpointId"`
+
+	// Status is "status" in the query. One of: pending, sent, failed.
+	Status *string `query:"status"`
+
+	// Source is "source" in the query. One of: storlaunch, plugipay.
+	Source *string `query:"source"`
+}
+
+// PaymentWebhookEvents calls GET /api/v1/payment/webhook-events: List webhook deliveries, newest first: each with its status (pending, sent, failed), attempt count, next retry, last response and every attempt made.
+func (a *GeneratedAPI) PaymentWebhookEvents(ctx context.Context, p *PaymentWebhookEventsArgs) (json.RawMessage, error) {
+	if p == nil {
+		p = &PaymentWebhookEventsArgs{}
+	}
+	q := url.Values{}
+	if p.Limit != nil {
+		q.Set("limit", apigenQueryValue(*p.Limit))
+	}
+	if p.Cursor != nil {
+		q.Set("cursor", apigenQueryValue(*p.Cursor))
+	}
+	if p.Type != nil {
+		q.Set("type", apigenQueryValue(*p.Type))
+	}
+	if p.EndpointID != nil {
+		q.Set("endpointId", apigenQueryValue(*p.EndpointID))
+	}
+	if p.Status != nil {
+		q.Set("status", apigenQueryValue(*p.Status))
+	}
+	if p.Source != nil {
+		q.Set("source", apigenQueryValue(*p.Source))
+	}
+	return a.c.apigenRequest(ctx, "GET", "/api/v1/payment/webhook-events", q, nil)
+}
+
+// PaymentWebhookEventsResend calls POST /api/v1/payment/webhook-events/{id}/resend: Resend a webhook delivery.
 func (a *GeneratedAPI) PaymentWebhookEventsResend(ctx context.Context, id string) (json.RawMessage, error) {
 	path := "/api/v1/payment/webhook-events/" + url.PathEscape(id) + "/resend"
 	return a.c.apigenRequest(ctx, "POST", path, nil, nil)
@@ -5011,10 +5393,71 @@ func (a *GeneratedAPI) ShippingShipmentsConfirmPickup(ctx context.Context, id st
 	return a.c.apigenRequest(ctx, "POST", path, nil, nil)
 }
 
+// ShippingShipmentsLabelArgs are the inputs of GeneratedAPI.ShippingShipmentsLabel.
+type ShippingShipmentsLabelArgs struct {
+	// Size is "size" in the query. One of: a4, thermal-80x100, thermal-100x150.
+	Size *string `query:"size"`
+
+	// ShowSenderPhone is "showSenderPhone" in the query. One of: true, false.
+	ShowSenderPhone *string `query:"showSenderPhone"`
+
+	// ShowRecipientPhone is "showRecipientPhone" in the query. One of: true, false.
+	ShowRecipientPhone *string `query:"showRecipientPhone"`
+
+	// MaskRecipientName is "maskRecipientName" in the query. One of: true, false.
+	MaskRecipientName *string `query:"maskRecipientName"`
+
+	// ShowShippingCost is "showShippingCost" in the query. One of: true, false.
+	ShowShippingCost *string `query:"showShippingCost"`
+
+	// ShowInsurance is "showInsurance" in the query. One of: true, false.
+	ShowInsurance *string `query:"showInsurance"`
+
+	// ShowItems is "showItems" in the query. One of: true, false.
+	ShowItems *string `query:"showItems"`
+
+	// ShowItemDescriptions is "showItemDescriptions" in the query. One of: true, false.
+	ShowItemDescriptions *string `query:"showItemDescriptions"`
+
+	// ShowItemSkus is "showItemSkus" in the query. One of: true, false.
+	ShowItemSkus *string `query:"showItemSkus"`
+}
+
 // ShippingShipmentsLabel calls GET /api/v1/shipping/shipments/{id}/label: List label.
-func (a *GeneratedAPI) ShippingShipmentsLabel(ctx context.Context, id string) (json.RawMessage, error) {
+func (a *GeneratedAPI) ShippingShipmentsLabel(ctx context.Context, id string, p *ShippingShipmentsLabelArgs) (json.RawMessage, error) {
+	if p == nil {
+		p = &ShippingShipmentsLabelArgs{}
+	}
+	q := url.Values{}
+	if p.Size != nil {
+		q.Set("size", apigenQueryValue(*p.Size))
+	}
+	if p.ShowSenderPhone != nil {
+		q.Set("showSenderPhone", apigenQueryValue(*p.ShowSenderPhone))
+	}
+	if p.ShowRecipientPhone != nil {
+		q.Set("showRecipientPhone", apigenQueryValue(*p.ShowRecipientPhone))
+	}
+	if p.MaskRecipientName != nil {
+		q.Set("maskRecipientName", apigenQueryValue(*p.MaskRecipientName))
+	}
+	if p.ShowShippingCost != nil {
+		q.Set("showShippingCost", apigenQueryValue(*p.ShowShippingCost))
+	}
+	if p.ShowInsurance != nil {
+		q.Set("showInsurance", apigenQueryValue(*p.ShowInsurance))
+	}
+	if p.ShowItems != nil {
+		q.Set("showItems", apigenQueryValue(*p.ShowItems))
+	}
+	if p.ShowItemDescriptions != nil {
+		q.Set("showItemDescriptions", apigenQueryValue(*p.ShowItemDescriptions))
+	}
+	if p.ShowItemSkus != nil {
+		q.Set("showItemSkus", apigenQueryValue(*p.ShowItemSkus))
+	}
 	path := "/api/v1/shipping/shipments/" + url.PathEscape(id) + "/label"
-	return a.c.apigenRequest(ctx, "GET", path, nil, nil)
+	return a.c.apigenRequest(ctx, "GET", path, q, nil)
 }
 
 // ShippingShipmentsRebookArgs are the inputs of GeneratedAPI.ShippingShipmentsRebook.
@@ -5184,9 +5627,26 @@ func (a *GeneratedAPI) ShippingCreditsList(ctx context.Context) (json.RawMessage
 	return a.c.apigenRequest(ctx, "GET", "/api/v1/shipping-credits", nil, nil)
 }
 
+// ShippingCreditsQuoteArgs are the inputs of GeneratedAPI.ShippingCreditsQuote.
+type ShippingCreditsQuoteArgs struct {
+	// Amount is "amount" in the query, required.
+	Amount int `query:"amount"`
+
+	// Currency is "currency" in the query. One of: IDR, USD.
+	Currency *string `query:"currency"`
+}
+
 // ShippingCreditsQuote calls GET /api/v1/shipping-credits/quote: What this rupiah amount of credit costs on a given rail.
-func (a *GeneratedAPI) ShippingCreditsQuote(ctx context.Context) (json.RawMessage, error) {
-	return a.c.apigenRequest(ctx, "GET", "/api/v1/shipping-credits/quote", nil, nil)
+func (a *GeneratedAPI) ShippingCreditsQuote(ctx context.Context, p *ShippingCreditsQuoteArgs) (json.RawMessage, error) {
+	if p == nil {
+		p = &ShippingCreditsQuoteArgs{}
+	}
+	q := url.Values{}
+	q.Set("amount", apigenQueryValue(p.Amount))
+	if p.Currency != nil {
+		q.Set("currency", apigenQueryValue(*p.Currency))
+	}
+	return a.c.apigenRequest(ctx, "GET", "/api/v1/shipping-credits/quote", q, nil)
 }
 
 // ShippingCreditsTopupArgs are the inputs of GeneratedAPI.ShippingCreditsTopup.
@@ -5241,9 +5701,34 @@ func (a *GeneratedAPI) ShippingCreditsTransactions(ctx context.Context, p *Shipp
 	return a.c.apigenRequest(ctx, "GET", "/api/v1/shipping-credits/transactions", q, nil)
 }
 
+// ShoppersListArgs are the inputs of GeneratedAPI.ShoppersList.
+type ShoppersListArgs struct {
+	// Search is "search" in the query.
+	Search *string `query:"search"`
+
+	// Limit is "limit" in the query.
+	Limit *int `query:"limit"`
+
+	// Cursor is "cursor" in the query.
+	Cursor *string `query:"cursor"`
+}
+
 // ShoppersList calls GET /api/v1/shoppers: List shoppers.
-func (a *GeneratedAPI) ShoppersList(ctx context.Context) (json.RawMessage, error) {
-	return a.c.apigenRequest(ctx, "GET", "/api/v1/shoppers", nil, nil)
+func (a *GeneratedAPI) ShoppersList(ctx context.Context, p *ShoppersListArgs) (json.RawMessage, error) {
+	if p == nil {
+		p = &ShoppersListArgs{}
+	}
+	q := url.Values{}
+	if p.Search != nil {
+		q.Set("search", apigenQueryValue(*p.Search))
+	}
+	if p.Limit != nil {
+		q.Set("limit", apigenQueryValue(*p.Limit))
+	}
+	if p.Cursor != nil {
+		q.Set("cursor", apigenQueryValue(*p.Cursor))
+	}
+	return a.c.apigenRequest(ctx, "GET", "/api/v1/shoppers", q, nil)
 }
 
 // StorefrontCreateLicensesArgs are the inputs of GeneratedAPI.StorefrontCreateLicenses.
@@ -5769,9 +6254,40 @@ func (a *GeneratedAPI) StorefrontLicensesValidate(ctx context.Context, p *Storef
 	return a.c.apigenRequest(ctx, "GET", "/api/v1/storefront/licenses/validate", q, nil)
 }
 
+// StorefrontProductsArgs are the inputs of GeneratedAPI.StorefrontProducts.
+type StorefrontProductsArgs struct {
+	// Limit is "limit" in the query.
+	Limit *int `query:"limit"`
+
+	// Cursor is "cursor" in the query.
+	Cursor *string `query:"cursor"`
+
+	// Published is "published" in the query.
+	Published *string `query:"published"`
+
+	// Type is "type" in the query. One of: digital, subscription, physical, license.
+	Type *string `query:"type"`
+}
+
 // StorefrontProducts calls GET /api/v1/storefront/products: GET /storefront/products.
-func (a *GeneratedAPI) StorefrontProducts(ctx context.Context) (json.RawMessage, error) {
-	return a.c.apigenRequest(ctx, "GET", "/api/v1/storefront/products", nil, nil)
+func (a *GeneratedAPI) StorefrontProducts(ctx context.Context, p *StorefrontProductsArgs) (json.RawMessage, error) {
+	if p == nil {
+		p = &StorefrontProductsArgs{}
+	}
+	q := url.Values{}
+	if p.Limit != nil {
+		q.Set("limit", apigenQueryValue(*p.Limit))
+	}
+	if p.Cursor != nil {
+		q.Set("cursor", apigenQueryValue(*p.Cursor))
+	}
+	if p.Published != nil {
+		q.Set("published", apigenQueryValue(*p.Published))
+	}
+	if p.Type != nil {
+		q.Set("type", apigenQueryValue(*p.Type))
+	}
+	return a.c.apigenRequest(ctx, "GET", "/api/v1/storefront/products", q, nil)
 }
 
 // StorefrontProductsAiGenerate calls POST /api/v1/storefront/products/{id}/ai-generate: Generate (regenerate).

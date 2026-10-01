@@ -25,7 +25,7 @@ import (
 )
 
 // Version is this SDK's version.
-const Version = "0.3.0"
+const Version = "0.4.0"
 
 // DefaultBaseURL is the production Storlaunch API base.
 const DefaultBaseURL = "https://storlaunch.com"

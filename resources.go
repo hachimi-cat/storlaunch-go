@@ -212,16 +212,38 @@ func (r *paymentPortalSessions) Create(ctx context.Context, input PortalSessionI
 	return doObject(ctx, r.c, http.MethodPost, "/api/v1/payment/portal-sessions", input, r.c.genIdem())
 }
 
-// WebhookEndpointInput mirrors the Node `{ url; events? }` payload.
+// WebhookEndpointInput is the body of PaymentWebhookEndpoints.Create. Events takes exact
+// types, "*" or a prefix ending in "*"; empty = everything. Active nil = true.
 type WebhookEndpointInput struct {
-	URL    string   `json:"url"`
-	Events []string `json:"events,omitempty"`
+	URL         string   `json:"url"`
+	Events      []string `json:"events,omitempty"`
+	Description string   `json:"description,omitempty"`
+	Active      *bool    `json:"active,omitempty"`
+}
+
+// WebhookEndpointPatch is the body of PaymentWebhookEndpoints.Update; nil fields are left
+// as they are. Active true also clears the failure streak of an endpoint Storlaunch
+// switched off; RotateSecret true returns a new "secret" (once) and retires the old one.
+type WebhookEndpointPatch struct {
+	URL          *string  `json:"url,omitempty"`
+	Events       []string `json:"events,omitempty"`
+	Description  *string  `json:"description,omitempty"`
+	Active       *bool    `json:"active,omitempty"`
+	RotateSecret *bool    `json:"rotateSecret,omitempty"`
 }
 
 type PaymentWebhookEndpoints interface {
 	List(ctx context.Context) (List, error)
+	Get(ctx context.Context, id string) (Object, error)
 	Create(ctx context.Context, input WebhookEndpointInput) (Object, error)
+	Update(ctx context.Context, id string, patch WebhookEndpointPatch) (Object, error)
 	Delete(ctx context.Context, id string) (Object, error)
+	// EventTypes returns {"storlaunch": [...], "plugipay": [...]}: the types an endpoint
+	// can subscribe to.
+	EventTypes(ctx context.Context) (Object, error)
+	// SendTest queues a test event (evt_test_…) for this endpoint alone and returns the
+	// delivery.
+	SendTest(ctx context.Context, id string) (Object, error)
 }
 
 type paymentWebhookEndpoints struct{ c *Client }
@@ -229,16 +251,33 @@ type paymentWebhookEndpoints struct{ c *Client }
 func (r *paymentWebhookEndpoints) List(ctx context.Context) (List, error) {
 	return doList(ctx, r.c, http.MethodGet, "/api/v1/payment/webhook-endpoints", nil, "")
 }
+func (r *paymentWebhookEndpoints) Get(ctx context.Context, id string) (Object, error) {
+	return doObject(ctx, r.c, http.MethodGet, "/api/v1/payment/webhook-endpoints/"+id, nil, "")
+}
 func (r *paymentWebhookEndpoints) Create(ctx context.Context, input WebhookEndpointInput) (Object, error) {
 	return doObject(ctx, r.c, http.MethodPost, "/api/v1/payment/webhook-endpoints", input, r.c.genIdem())
+}
+func (r *paymentWebhookEndpoints) Update(ctx context.Context, id string, patch WebhookEndpointPatch) (Object, error) {
+	return doObject(ctx, r.c, http.MethodPatch, "/api/v1/payment/webhook-endpoints/"+id, patch, "")
 }
 func (r *paymentWebhookEndpoints) Delete(ctx context.Context, id string) (Object, error) {
 	return doObject(ctx, r.c, http.MethodDelete, "/api/v1/payment/webhook-endpoints/"+id, nil, "")
 }
+func (r *paymentWebhookEndpoints) EventTypes(ctx context.Context) (Object, error) {
+	return doObject(ctx, r.c, http.MethodGet, "/api/v1/payment/webhook-endpoints/event-types", nil, "")
+}
+func (r *paymentWebhookEndpoints) SendTest(ctx context.Context, id string) (Object, error) {
+	return doObject(ctx, r.c, http.MethodPost, "/api/v1/payment/webhook-endpoints/"+id+"/test", nil, "")
+}
 
+// PaymentWebhookEvents is the delivery log: one row per event per endpoint, with every
+// attempt.
 type PaymentWebhookEvents interface {
 	List(ctx context.Context, params map[string]any) (List, error)
 	Get(ctx context.Context, id string) (Object, error)
+	// Resend queues one more attempt now ("pending"); 409 when it is already queued or
+	// its endpoint is off.
+	Resend(ctx context.Context, id string) (Object, error)
 }
 
 type paymentWebhookEvents struct{ c *Client }
@@ -248,6 +287,9 @@ func (r *paymentWebhookEvents) List(ctx context.Context, params map[string]any) 
 }
 func (r *paymentWebhookEvents) Get(ctx context.Context, id string) (Object, error) {
 	return doObject(ctx, r.c, http.MethodGet, "/api/v1/payment/webhook-events/"+id, nil, "")
+}
+func (r *paymentWebhookEvents) Resend(ctx context.Context, id string) (Object, error) {
+	return doObject(ctx, r.c, http.MethodPost, "/api/v1/payment/webhook-events/"+id+"/resend", nil, "")
 }
 
 // ═══════════════════════════════════════════════════════════════════════
